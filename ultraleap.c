@@ -43,8 +43,6 @@ typedef struct _ultraleap
     LEAP_CONNECTION connection;
     LEAP_CLOCK_REBASER clockSynchronizer;
     LEAP_TRACKING_EVENT *frame;
-    void *m_clock;
-    double m_interval;
     t_systhread        x_systhread;                        // thread reference
     t_systhread_mutex    x_mutex;                            // mutual exclusion lock for threadsafety
     int                x_systhread_cancel;                    // thread cancel flag
@@ -113,6 +111,7 @@ void ultraleap_assist(t_ultraleap *x, void *b, long m, long a, char *s)
 	}
 }
 
+// Initializes the connection to Leap and starts the message service thread
 void ultraleap_connect(t_ultraleap *x){
     post("trying to connect");
     if(x->isrunning){
@@ -135,16 +134,15 @@ void ultraleap_connect(t_ultraleap *x){
 
 void ultraleap_free(t_ultraleap *x)
 {
-    ultraleap_stop(x);
-	//delete (Leap::Controller *)(x->leap);
-    LeapCloseConnection(x->connection);
-    LeapDestroyConnection(x->connection);
+    ultraleap_stop(x); // stop the service thread
+    LeapCloseConnection(x->connection); // close the leap connection
+    LeapDestroyConnection(x->connection); // destroy the leap connection
     // free our mutex
     if (x->x_mutex)
         systhread_mutex_free(x->x_mutex);
-    freeobject((t_object *)x->m_clock);
 }
 
+//worker thread function that polls the Leap service and stores tracking frames
 void * ultraleap_tick(t_ultraleap *x){
     while(1){
         if (x->x_systhread_cancel)
@@ -154,14 +152,15 @@ void * ultraleap_tick(t_ultraleap *x){
         LEAP_CONNECTION_INFO *cInfo;
         if(x->isrunning){
             //post("running");
-            unsigned int timeout = 1000;
+            unsigned int timeout = 10;
             result = LeapPollConnection(x->connection, timeout, &msg);
             if(result == eLeapRS_Success){
                 if (msg.type == eLeapEventType_Tracking){
                     LEAP_TRACKING_EVENT *frame = (LEAP_TRACKING_EVENT *)msg.tracking_event;
+                    //use mutex lock to prevent issues between threads
                     systhread_mutex_lock(x->x_mutex);
                     if(!x->frame) x->frame = (LEAP_TRACKING_EVENT *)sysmem_newptr((t_ptr_size)(sizeof(*frame)));
-                    *x->frame = *frame;
+                    *x->frame = *frame; // store frame of data in object struct
                     systhread_mutex_unlock(x->x_mutex);
                 }
             }
@@ -173,7 +172,8 @@ void * ultraleap_tick(t_ultraleap *x){
     systhread_exit(0);
     return NULL;
 }
-    
+
+//start the worker thread
 void ultraleap_systhread_start(t_ultraleap *x){
     unsigned int ret;
     if (x->x_systhread) {
@@ -203,6 +203,7 @@ void simplethread_cancel(t_ultraleap *x)
     ultraleap_stop(x);                                    // kill thread if, any
 }
 
+//read from the most recent frame of data received from Leap
 void ultraleap_bang(t_ultraleap *x)
 {
     if(x->isrunning){
@@ -255,8 +256,6 @@ void *ultraleap_new(t_symbol *s, long argc, t_atom *argv)
         
         //ultraleap_connect(x);
         LeapCreateClockRebaser(&x->clockSynchronizer);
-        //x->m_clock = clock_new(x,(method)ultraleap_service(x)); // make a clock
-        x->m_interval = 5;
         x->x_systhread = NULL;
         systhread_mutex_new(&x->x_mutex,0);
 	}
