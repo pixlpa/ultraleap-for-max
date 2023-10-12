@@ -33,7 +33,7 @@
 #endif
 
 ////////////////////////// object struct
-typedef struct _dict_ultraleap
+typedef struct _px_dict_ultraleap
 {
 	t_object ob;
     void *outlet_frame;
@@ -50,20 +50,20 @@ typedef struct _dict_ultraleap
     int                x_systhread_cancel;                    // thread cancel flag
     void                *x_qelem;
     t_int frame_id_save;
-} t_dict_ultraleap;
+} t_px_dict_ultraleap;
 
 ///////////////////////// function prototypes
 //// standard set
-void *dict_ultraleap_new(t_symbol *s, long argc, t_atom *argv);
-void dict_ultraleap_free(t_dict_ultraleap *x);
-void dict_ultraleap_assist(t_dict_ultraleap *x, void *b, long m, long a, char *s);
-void dict_ultraleap_bang(t_dict_ultraleap *x);
-void dict_ultraleap_connect(t_dict_ultraleap *x);
-void dict_ultraleap_stop(t_dict_ultraleap *x);
-void dict_ultraleap_systhread_start(t_dict_ultraleap *x);
-void *dict_ultraleap_service(t_dict_ultraleap *x);
-void * dict_ultraleap_tick(t_dict_ultraleap *x);
-void dict_ultraleap_setname(t_dict_ultraleap *x, void *attr, long argc, t_atom *argv);
+void *px_dict_ultraleap_new(t_symbol *s, long argc, t_atom *argv);
+void px_dict_ultraleap_free(t_px_dict_ultraleap *x);
+void px_dict_ultraleap_assist(t_px_dict_ultraleap *x, void *b, long m, long a, char *s);
+void px_dict_ultraleap_bang(t_px_dict_ultraleap *x);
+void px_dict_ultraleap_connect(t_px_dict_ultraleap *x);
+void px_dict_ultraleap_stop(t_px_dict_ultraleap *x);
+void px_dict_ultraleap_systhread_start(t_px_dict_ultraleap *x);
+void *px_dict_ultraleap_service(t_px_dict_ultraleap *x);
+void * px_dict_ultraleap_tick(t_px_dict_ultraleap *x);
+void px_dict_ultraleap_setname(t_px_dict_ultraleap *x, void *attr, long argc, t_atom *argv);
 
 // class statics/globals
 t_symbol *ps_name;
@@ -71,28 +71,28 @@ static t_symbol *ps_modified;
 static t_symbol *ps_dictionary;
 
 //global class pointer variable
-void *dict_ultraleap_class;
+void *px_dict_ultraleap_class;
 
 //Max functions
 int T_EXPORT main(void)
 {
 	t_class *c;
 	
-	c = class_new("dict.ultraleap", (method)dict_ultraleap_new, (method)dict_ultraleap_free, (long)sizeof(t_dict_ultraleap), 0L /* leave NULL!! */, A_GIMME, 0);
+	c = class_new("px.dict.ultraleap", (method)px_dict_ultraleap_new, (method)px_dict_ultraleap_free, (long)sizeof(t_px_dict_ultraleap), 0L /* leave NULL!! */, A_GIMME, 0);
 	
-    class_addmethod(c, (method)dict_ultraleap_bang, "bang", 0);
-    class_addmethod(c, (method)dict_ultraleap_connect, "connect", 0);
-    class_addmethod(c, (method)dict_ultraleap_stop, "stop", 0);
-    class_addmethod(c, (method)dict_ultraleap_assist, "assist", A_CANT, 0);
+    class_addmethod(c, (method)px_dict_ultraleap_bang, "bang", 0);
+    class_addmethod(c, (method)px_dict_ultraleap_connect, "connect", 0);
+    class_addmethod(c, (method)px_dict_ultraleap_stop, "stop", 0);
+    class_addmethod(c, (method)px_dict_ultraleap_assist, "assist", A_CANT, 0);
     
-    CLASS_ATTR_SYM(c,            "name",            0, t_dict_ultraleap, name);
-    CLASS_ATTR_ACCESSORS(c,        "name",            NULL, dict_ultraleap_setname);
+    CLASS_ATTR_SYM(c,            "name",            0, t_px_dict_ultraleap, name);
+    CLASS_ATTR_ACCESSORS(c,        "name",            NULL, px_dict_ultraleap_setname);
     CLASS_ATTR_CATEGORY(c,        "name",            0, "Dictionary");
     CLASS_ATTR_LABEL(c,            "name",            0, "Name");
     CLASS_ATTR_BASIC(c,            "name",            0);
 	
 	class_register(CLASS_BOX, c);
-	dict_ultraleap_class = c;
+	px_dict_ultraleap_class = c;
     
     ps_name = gensym("name");
     ps_modified = gensym("modified");
@@ -101,7 +101,7 @@ int T_EXPORT main(void)
 	return 0;
 }
 
-void dict_ultraleap_assist(t_dict_ultraleap *x, void *b, long m, long a, char *s)
+void px_dict_ultraleap_assist(t_px_dict_ultraleap *x, void *b, long m, long a, char *s)
 {
 	if (m == ASSIST_INLET) { //inlet
 		sprintf(s, "bang to cause the frame data output");
@@ -120,7 +120,7 @@ void dict_ultraleap_assist(t_dict_ultraleap *x, void *b, long m, long a, char *s
 }
 
 // Initializes the connection to Leap and starts the message service thread
-void dict_ultraleap_connect(t_dict_ultraleap *x){
+void px_dict_ultraleap_connect(t_px_dict_ultraleap *x){
     post("trying to connect");
     if(x->isrunning){
         post("already connected!");
@@ -131,7 +131,7 @@ void dict_ultraleap_connect(t_dict_ultraleap *x){
         result = LeapOpenConnection(x->connection);
         if(result == eLeapRS_Success){
             x->isrunning = true;
-            dict_ultraleap_systhread_start(x);
+            px_dict_ultraleap_systhread_start(x);
             post("Leap Connected");
         }
         else post("Leap connection not opened");
@@ -140,9 +140,9 @@ void dict_ultraleap_connect(t_dict_ultraleap *x){
     return &x->connection;
 }
 
-void dict_ultraleap_free(t_dict_ultraleap *x)
+void px_dict_ultraleap_free(t_px_dict_ultraleap *x)
 {
-    dict_ultraleap_stop(x); // stop the service thread
+    px_dict_ultraleap_stop(x); // stop the service thread
     LeapCloseConnection(x->connection); // close the leap connection
     LeapDestroyConnection(x->connection); // destroy the leap connection
     // free our mutex
@@ -152,7 +152,7 @@ void dict_ultraleap_free(t_dict_ultraleap *x)
 }
 
 //worker thread function that polls the Leap service and stores tracking frames
-void * dict_ultraleap_tick(t_dict_ultraleap *x){
+void * px_dict_ultraleap_tick(t_px_dict_ultraleap *x){
     while(1){
         if (x->x_systhread_cancel)
             return NULL;
@@ -183,7 +183,7 @@ void * dict_ultraleap_tick(t_dict_ultraleap *x){
 }
 
 //start the worker thread
-void dict_ultraleap_systhread_start(t_dict_ultraleap *x){
+void px_dict_ultraleap_systhread_start(t_px_dict_ultraleap *x){
     unsigned int ret;
     if (x->x_systhread) {
         x->x_systhread_cancel = true;                        // tell the thread to stop
@@ -191,11 +191,11 @@ void dict_ultraleap_systhread_start(t_dict_ultraleap *x){
         x->x_systhread = NULL;
     }
     if (x->x_systhread == NULL) {
-        systhread_create((method) dict_ultraleap_tick, x, 0, 0, 0, &x->x_systhread);
+        systhread_create((method) px_dict_ultraleap_tick, x, 0, 0, 0, &x->x_systhread);
     }
 }
 
-void dict_ultraleap_stop(t_dict_ultraleap *x)
+void px_dict_ultraleap_stop(t_px_dict_ultraleap *x)
 {
     unsigned int ret;
 
@@ -208,7 +208,7 @@ void dict_ultraleap_stop(t_dict_ultraleap *x)
 }
 
 //read from the most recent frame of data received from Leap
-void dict_ultraleap_bang(t_dict_ultraleap *x)
+void px_dict_ultraleap_bang(t_px_dict_ultraleap *x)
 {
     if(x->isrunning){
         LEAP_TRACKING_EVENT *frame;
@@ -282,7 +282,7 @@ void dict_ultraleap_bang(t_dict_ultraleap *x)
     }
 }
 
-void dict_ultraleap_setname(t_dict_ultraleap *x, void *attr, long argc, t_atom *argv)
+void px_dict_ultraleap_setname(t_px_dict_ultraleap *x, void *attr, long argc, t_atom *argv)
 {
     t_symbol        *name = atom_getsym(argv);
 
@@ -296,10 +296,10 @@ void dict_ultraleap_setname(t_dict_ultraleap *x, void *attr, long argc, t_atom *
         object_error((t_object *)x, "could not create dictionary named %s", name->s_name);
 }
 
-void *dict_ultraleap_new(t_symbol *s, long argc, t_atom *argv)
+void *px_dict_ultraleap_new(t_symbol *s, long argc, t_atom *argv)
 {
-	t_dict_ultraleap *x = NULL;
-	if ((x = (t_dict_ultraleap *)object_alloc((t_class *)dict_ultraleap_class)))
+	t_px_dict_ultraleap *x = NULL;
+	if ((x = (t_px_dict_ultraleap *)object_alloc((t_class *)px_dict_ultraleap_class)))
 	{
         long            attrstart = attr_args_offset(argc, argv);
         t_symbol        *name = NULL;

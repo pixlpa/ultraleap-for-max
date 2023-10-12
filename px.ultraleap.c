@@ -40,6 +40,7 @@ typedef struct _ultraleap
     void *outlet_frame;
     void *outlet_start;
     bool isrunning;
+    t_int64 lastframeid;
     LEAP_CONNECTION connection;
     LEAP_CLOCK_REBASER clockSynchronizer;
     LEAP_TRACKING_EVENT *frame;
@@ -70,7 +71,7 @@ int T_EXPORT main(void)
 {
 	t_class *c;
 	
-	c = class_new("ultraleap", (method)ultraleap_new, (method)ultraleap_free, (long)sizeof(t_ultraleap), 0L /* leave NULL!! */, A_GIMME, 0);
+	c = class_new("px.ultraleap", (method)ultraleap_new, (method)ultraleap_free, (long)sizeof(t_ultraleap), 0L /* leave NULL!! */, A_GIMME, 0);
 	
     class_addmethod(c, (method)ultraleap_bang, "bang", 0);
     class_addmethod(c, (method)ultraleap_connect, "connect", 0);
@@ -105,6 +106,8 @@ void ultraleap_assist(t_ultraleap *x, void *b, long m, long a, char *s)
             case 3:
 				sprintf(s, "Begin Frame");
 				break;
+            case 4:
+                sprintf(s, "Frame");
 			default:
 				break;
 		}
@@ -213,29 +216,35 @@ void ultraleap_bang(t_ultraleap *x)
         systhread_mutex_unlock(x->x_mutex);
         if (frame){
             int64_t frameID = frame->tracking_frame_id;
-            t_int numhands = (t_int) frame->nHands;
-            if(numhands>0) outlet_bang(x->outlet_start);
-            for(uint32_t h = 0; h < numhands; h++){
-              LEAP_HAND* hand = &frame->pHands[h];
-              t_atom hand_data[11];
-                // palmPosition
-                t_symbol *hand_type = (hand->type == eLeapHandType_Left) ? gensym("left") : gensym("right");
-                atom_setsym(hand_data, hand_type);
-                atom_setfloat(hand_data+1, hand->palm.position.x);
-                atom_setfloat(hand_data+2, hand->palm.position.y);
-                atom_setfloat(hand_data+3, hand->palm.position.z);
-                outlet_list(x->outlet_hands, NULL, 4, hand_data);
-                for(t_int f = 0; f < 5; f++){
-                    LEAP_DIGIT* finger = &hand->digits[f];
-                    t_atom finger_data[4];
-                    atom_setlong(finger_data,f);
-                    atom_setfloat(finger_data+1, finger->bones[3].next_joint.x);
-                    atom_setfloat(finger_data+2, finger->bones[3].next_joint.y);
-                    atom_setfloat(finger_data+3, finger->bones[3].next_joint.z);
-                    outlet_list(x->outlet_fingers, NULL, 4, finger_data);
+            if(frameID != x->lastframeid){
+                t_atom frame_data[5];
+                atom_setsym(frame_data, gensym("id"));
+                atom_setlong(frame_data+1, frameID);
+                t_int numhands = (t_int) frame->nHands;
+                if(numhands>0) outlet_bang(x->outlet_start);
+                for(uint32_t h = 0; h < numhands; h++){
+                    LEAP_HAND* hand = &frame->pHands[h];
+                    t_atom hand_data[11];
+                    // palmPosition
+                    t_symbol *hand_type = (hand->type == eLeapHandType_Left) ? gensym("left") : gensym("right");
+                    atom_setsym(hand_data, hand_type);
+                    atom_setfloat(hand_data+1, hand->palm.position.x);
+                    atom_setfloat(hand_data+2, hand->palm.position.y);
+                    atom_setfloat(hand_data+3, hand->palm.position.z);
+                    outlet_list(x->outlet_hands, NULL, 4, hand_data);
+                    for(t_int f = 0; f < 5; f++){
+                        LEAP_DIGIT* finger = &hand->digits[f];
+                        t_atom finger_data[4];
+                        atom_setlong(finger_data,f);
+                        atom_setfloat(finger_data+1, finger->bones[3].next_joint.x);
+                        atom_setfloat(finger_data+2, finger->bones[3].next_joint.y);
+                        atom_setfloat(finger_data+3, finger->bones[3].next_joint.z);
+                        outlet_list(x->outlet_fingers, NULL, 4, finger_data);
+                    }
                 }
+                if (numhands>0) outlet_bang(x->outlet_end);
             }
-            if (numhands>0) outlet_bang(x->outlet_end);
+            x->lastframeid = frameID;
         }
         //else post("frame failed");
     }
@@ -250,11 +259,11 @@ void *ultraleap_new(t_symbol *s, long argc, t_atom *argv)
 	{
         x->frame_id_save = 0;
         x->outlet_start = outlet_new(x, NULL);
+        x->outlet_frame = outlet_new(x, NULL);
 		x->outlet_hands = outlet_new(x, NULL);
         x->outlet_fingers = outlet_new(x, NULL);
         x->outlet_end = outlet_new(x, NULL);
-        
-        //ultraleap_connect(x);
+
         LeapCreateClockRebaser(&x->clockSynchronizer);
         x->x_systhread = NULL;
         systhread_mutex_new(&x->x_mutex,0);
