@@ -1,7 +1,7 @@
 # ultraleap-for-max
- ###A Max object for using Ultraleap Leap Motion with Apple Silicon computers.
+ ##A Max object for using Ultraleap Leap Motion with Apple Silicon computers.
  
- *Mathieu Chamagne is developing a more actively maintained [ultraleap object] (https://github.com/celtera/ultraleap/tree/main) as well. I'd recommend following that and contributing to their fund.*
+ *Mathieu Chamagne is developing a more actively maintained [ultraleap object](https://github.com/celtera/ultraleap/tree/main) as well. I'd recommend following that and contributing to their fund for more reliable results.*
  ##Info
  This project was begun primarily to experiment with the new Gemini SDK from Ultraleap and to revive a Max-based live performance project that relies heavily on Leap Motion. It has also been awhile since I wrote a Max external in C, and wanted to refresh my memory. It was a good excuse to learn about background threads, mutexes, and dictionaries.'
  ##px.ultraleap
